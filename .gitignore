@@ -1,0 +1,48 @@
+# Build directories
+build/
+out/
+cmake-build-*/
+
+# IDE files
+.vs/
+.vscode/
+*.suo
+*.user
+*.sln.docstates
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.lib
+*.a
+*.o
+*.obj
+
+# Database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Package files
+*.zip
+*.tar.gz
+*.rar
+
+# Temporary files
+*.tmp
+*.temp
