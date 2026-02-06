@@ -1,5 +1,5 @@
 /*
- * AshEmu - WoW 1.12.1 Server Emulator
+ * AshEmu - WoW 2.4.3 Server Emulator
  * Copyright (C) 2025 AshEmu Team
  *
  * player.h - Player data and helper functions
@@ -16,6 +16,8 @@ typedef struct {
     character_t character;
     uint64_t guid;
     int map;
+    int zone_id;
+    int area_id;
     float x;
     float y;
     float z;

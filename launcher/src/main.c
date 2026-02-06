@@ -1,5 +1,5 @@
 /*
- * AshEmu - WoW 1.12.1 Server Emulator
+ * AshEmu - WoW 2.4.3 Server Emulator
  * Copyright (C) 2025 AshEmu Team
  *
  * launcher/main.c - Combined launcher that runs both auth and world servers
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     (void)argv;
 
     printf("===========================================\n");
-    printf("  AshEmu - WoW 1.12.1 Server Emulator\n");
+    printf("  AshEmu - WoW 2.4.3 Server Emulator\n");
     printf("  Auth Server: Port %d\n", AUTH_SERVER_PORT);
     printf("  World Server: Port %d\n", WORLD_SERVER_PORT);
     printf("===========================================\n\n");

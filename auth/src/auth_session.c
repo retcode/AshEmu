@@ -1,5 +1,5 @@
 /*
- * AshEmu - WoW 1.12.1 Server Emulator
+ * AshEmu - WoW 2.4.3 Server Emulator (TBC)
  * Copyright (C) 2025 AshEmu Team
  *
  * auth_session.c - Auth session handling (SRP6 authentication)
@@ -159,10 +159,12 @@ static result_t handle_logon_proof(auth_session_t *session, const uint8_t *data,
         database_update_session_key(session->account.id, session_key);
     }
 
-    /* Build success response (1.12.1 format) */
+    /* Build success response (TBC 2.4.3 format) */
     write_uint8(&response, AUTH_SUCCESS);
-    write_bytes(&response, M2, SRP6_PROOF_SIZE);  /* Server proof */
-    write_uint32(&response, 0);  /* unknown (required for 1.12.1) */
+    write_bytes(&response, M2, SRP6_PROOF_SIZE);  /* Server proof (20 bytes) */
+    write_uint32(&response, 0x00800000);  /* Account flags (0x00800000 = pro pass, TBC enabled) */
+    write_uint32(&response, 0);  /* Survey ID */
+    write_uint16(&response, 0);  /* Login flags */
 
     client_send_all(session->client, writer_data(&response), writer_size(&response));
     writer_free(&response);
@@ -171,7 +173,7 @@ static result_t handle_logon_proof(auth_session_t *session, const uint8_t *data,
     return OK;
 }
 
-/* Handle REALM_LIST */
+/* Handle REALM_LIST (TBC 2.4.3 format) */
 static result_t handle_realm_list(auth_session_t *session) {
     LOG_INFO("AuthServer", "Realm list requested by: %s", session->account.username);
 
@@ -180,13 +182,12 @@ static result_t handle_realm_list(auth_session_t *session) {
     writer_init(&realm_data);
 
     write_uint32(&realm_data, 0);  /* unknown */
-    write_uint16(&realm_data, 1);  /* realm count (uint16 per 1.12.1 protocol) */
+    write_uint16(&realm_data, 1);  /* realm count */
 
-    /* Realm entry (1.12.1 format) */
+    /* Realm entry (TBC 2.4.3 format) */
     write_uint8(&realm_data, 0);   /* realm type/icon (0 = Normal) */
     write_uint8(&realm_data, 0);   /* lock (0 = unlocked) */
-    write_uint8(&realm_data, 0);   /* color (green) */
-    write_uint8(&realm_data, 0);   /* flags (0 = online) */
+    write_uint8(&realm_data, 0);   /* flags (0 = online, no special flags) */
     write_cstring(&realm_data, "AshEmu");  /* realm name */
     write_cstring(&realm_data, "127.0.0.1:8085");  /* address */
     write_float(&realm_data, 0.0f);  /* population */
@@ -194,7 +195,7 @@ static result_t handle_realm_list(auth_session_t *session) {
     write_uint8(&realm_data, 1);   /* timezone */
     write_uint8(&realm_data, 1);   /* realm ID (must be non-zero) */
 
-    write_uint16(&realm_data, 0x10);  /* footer */
+    write_uint16(&realm_data, 0x0002);  /* footer/unknown (TBC uses 0x0002) */
 
     /* Build full response */
     packet_writer_t response;

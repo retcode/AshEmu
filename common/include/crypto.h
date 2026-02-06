@@ -1,5 +1,5 @@
 /*
- * AshEmu - WoW 1.12.1 Server Emulator
+ * AshEmu - WoW 2.4.3 Server Emulator
  * Copyright (C) 2025 AshEmu Team
  *
  * crypto.h - SRP6 authentication and WorldCrypt header encryption
@@ -69,9 +69,12 @@ result_t srp6_verify_proof(
 /* Get session key after successful verification */
 const uint8_t *srp6_get_session_key(const srp6_t *srp);
 
+/* TBC WorldCrypt uses 20-byte HMAC-derived key */
+#define WORLDCRYPT_KEY_SIZE 20
+
 /* WorldCrypt header encryption context */
 typedef struct {
-    uint8_t session_key[SRP6_SESSION_KEY_SIZE];
+    uint8_t key[WORLDCRYPT_KEY_SIZE];  /* TBC: HMAC-SHA1 derived key */
     uint8_t send_i;
     uint8_t send_j;
     uint8_t recv_i;

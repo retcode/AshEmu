@@ -1,5 +1,5 @@
 /*
- * AshEmu - WoW 1.12.1 Server Emulator
+ * AshEmu - WoW 2.4.3 Server Emulator
  * Copyright (C) 2025 AshEmu Team
  *
  * models.c - Model structure implementations

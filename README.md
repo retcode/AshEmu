@@ -1,6 +1,6 @@
 # AshEmu
 
-A lightweight World of Warcraft 1.12.1 (Vanilla) server emulator written in C17.
+A lightweight World of Warcraft 2.4.3 (TBC) server emulator written in C17.
 
 ## Features
 
@@ -17,7 +17,7 @@ A lightweight World of Warcraft 1.12.1 (Vanilla) server emulator written in C17.
 - OpenSSL 1.1+ (for cryptographic functions)
 
 ### Runtime
-- WoW Client 1.12.1 (5875)
+- WoW Client 2.4.3 (8606)
 
 ## Building
 

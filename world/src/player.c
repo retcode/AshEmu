@@ -1,11 +1,12 @@
 /*
- * AshEmu - WoW 1.12.1 Server Emulator
+ * AshEmu - WoW 2.4.3 Server Emulator (TBC)
  * Copyright (C) 2025 AshEmu Team
  *
  * player.c - Player helper functions
  */
 
 #include "player.h"
+#include "positions.h"
 
 void player_init(player_t *player, const character_t *character) {
     player->character = *character;
@@ -15,6 +16,11 @@ void player_init(player_t *player, const character_t *character) {
     player->y = character->y;
     player->z = character->z;
     player->orientation = character->orientation;
+
+    /* Get zone/area from start position based on race */
+    const start_position_t *start = get_start_position(character->race);
+    player->zone_id = start->zone_id;
+    player->area_id = start->area_id;
 }
 
 int player_get_display_id(const player_t *player) {
@@ -39,6 +45,10 @@ int player_get_display_id(const player_t *player) {
             return gender == 0 ? 1563 : 1564;
         case 8:  /* Troll */
             return gender == 0 ? 1478 : 1479;
+        case 10: /* Blood Elf (TBC) */
+            return gender == 0 ? 15476 : 15475;
+        case 11: /* Draenei (TBC) */
+            return gender == 0 ? 16125 : 16126;
         default:
             return 49;  /* Default to Human Male */
     }
@@ -46,14 +56,16 @@ int player_get_display_id(const player_t *player) {
 
 int player_get_faction_template(const player_t *player) {
     switch (player->character.race) {
-        case 1:  return 1;    /* Human - Stormwind */
-        case 2:  return 2;    /* Orc - Orgrimmar */
-        case 3:  return 3;    /* Dwarf - Ironforge */
-        case 4:  return 4;    /* Night Elf - Darnassus */
-        case 5:  return 5;    /* Undead - Undercity */
-        case 6:  return 6;    /* Tauren - Thunder Bluff */
-        case 7:  return 115;  /* Gnome - Gnomeregan */
-        case 8:  return 116;  /* Troll - Darkspear */
+        case 1:  return 1;     /* Human - Stormwind */
+        case 2:  return 2;     /* Orc - Orgrimmar */
+        case 3:  return 3;     /* Dwarf - Ironforge */
+        case 4:  return 4;     /* Night Elf - Darnassus */
+        case 5:  return 5;     /* Undead - Undercity */
+        case 6:  return 6;     /* Tauren - Thunder Bluff */
+        case 7:  return 115;   /* Gnome - Gnomeregan */
+        case 8:  return 116;   /* Troll - Darkspear */
+        case 10: return 1610;  /* Blood Elf - Silvermoon (TBC) */
+        case 11: return 1629;  /* Draenei - Exodar (TBC) */
         default: return 1;
     }
 }

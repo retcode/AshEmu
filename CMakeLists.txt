@@ -1,4 +1,4 @@
-# AshEmu - WoW 1.12.1 Server Emulator
+# AshEmu - WoW 2.4.3 Server Emulator
 # Root CMakeLists.txt
 
 cmake_minimum_required(VERSION 3.16)

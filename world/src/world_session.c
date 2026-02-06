@@ -1,5 +1,5 @@
 /*
- * AshEmu - WoW 1.12.1 Server Emulator
+ * AshEmu - WoW 2.4.3 Server Emulator (TBC)
  * Copyright (C) 2025 AshEmu Team
  *
  * world_session.c - World session packet handlers
@@ -33,9 +33,36 @@ void world_session_free(world_session_t *session) {
     free(session);
 }
 
+/* Opcode name for debugging */
+static const char *opcode_name(uint16_t opcode) {
+    switch (opcode) {
+        case SMSG_AUTH_CHALLENGE: return "SMSG_AUTH_CHALLENGE";
+        case SMSG_AUTH_RESPONSE: return "SMSG_AUTH_RESPONSE";
+        case SMSG_CHAR_ENUM: return "SMSG_CHAR_ENUM";
+        case SMSG_CHAR_CREATE: return "SMSG_CHAR_CREATE";
+        case SMSG_CHAR_DELETE: return "SMSG_CHAR_DELETE";
+        case SMSG_LOGIN_VERIFY_WORLD: return "SMSG_LOGIN_VERIFY_WORLD";
+        case SMSG_ACCOUNT_DATA_TIMES: return "SMSG_ACCOUNT_DATA_TIMES";
+        case SMSG_TUTORIAL_FLAGS: return "SMSG_TUTORIAL_FLAGS";
+        case SMSG_LOGIN_SETTIMESPEED: return "SMSG_LOGIN_SETTIMESPEED";
+        case SMSG_INITIAL_SPELLS: return "SMSG_INITIAL_SPELLS";
+        case SMSG_ACTION_BUTTONS: return "SMSG_ACTION_BUTTONS";
+        case SMSG_INITIALIZE_FACTIONS: return "SMSG_INITIALIZE_FACTIONS";
+        case SMSG_INIT_WORLD_STATES: return "SMSG_INIT_WORLD_STATES";
+        case SMSG_BINDPOINTUPDATE: return "SMSG_BINDPOINTUPDATE";
+        case SMSG_UPDATE_OBJECT: return "SMSG_UPDATE_OBJECT";
+        case SMSG_TIME_SYNC_REQ: return "SMSG_TIME_SYNC_REQ";
+        case SMSG_PONG: return "SMSG_PONG";
+        case SMSG_NAME_QUERY_RESPONSE: return "SMSG_NAME_QUERY_RESPONSE";
+        default: return "UNKNOWN";
+    }
+}
+
 /* Send packet with proper header format */
 static result_t send_packet(world_session_t *session, uint16_t opcode,
                                 const uint8_t *data, size_t data_len) {
+    LOG_DEBUG("WorldServer", "SEND %s (0x%04X) size=%zu", opcode_name(opcode), opcode, data_len);
+
     /* Header: 2 bytes size (big-endian) + 2 bytes opcode (little-endian) */
     uint16_t size = (uint16_t)(data_len + 2);  /* +2 for opcode */
     uint8_t header[4];
@@ -61,10 +88,12 @@ static result_t send_packet(world_session_t *session, uint16_t opcode,
     return result;
 }
 
-/* Send SMSG_AUTH_CHALLENGE */
+/* Send SMSG_AUTH_CHALLENGE (TBC 2.4.3 format) */
 static result_t send_auth_challenge(world_session_t *session) {
     packet_writer_t packet;
     writer_init(&packet);
+
+    /* TBC 2.4.3: just uint32 server_seed (same as vanilla) */
     write_uint32(&packet, session->server_seed);
 
     result_t result = send_packet(session, SMSG_AUTH_CHALLENGE,
@@ -73,7 +102,7 @@ static result_t send_auth_challenge(world_session_t *session) {
     return result;
 }
 
-/* Handle CMSG_AUTH_SESSION */
+/* Handle CMSG_AUTH_SESSION (TBC 2.4.3 format) */
 static result_t handle_auth_session(world_session_t *session, const uint8_t *data, size_t len) {
     packet_reader_t reader;
     reader_init(&reader, data, len);
@@ -133,13 +162,14 @@ static result_t handle_auth_session(world_session_t *session, const uint8_t *dat
 
     LOG_INFO("WorldServer", "Auth successful: %s", username);
 
-    /* Send auth response */
+    /* Send auth response (TBC 2.4.3 format) */
     packet_writer_t packet;
     writer_init(&packet);
     write_uint8(&packet, WORLD_AUTH_OK);
     write_uint32(&packet, 0);  /* BillingTimeRemaining */
     write_uint8(&packet, 0);   /* BillingPlanFlags */
     write_uint32(&packet, 0);  /* BillingTimeRested */
+    write_uint8(&packet, 1);   /* Expansion (0=Classic, 1=TBC) */
 
     send_packet(session, SMSG_AUTH_RESPONSE, writer_data(&packet), writer_size(&packet));
     writer_free(&packet);
@@ -152,6 +182,9 @@ static result_t handle_auth_session(world_session_t *session, const uint8_t *dat
 static result_t handle_char_enum(world_session_t *session) {
     character_list_t characters;
     database_get_characters(session->account.id, &characters);
+
+    LOG_INFO("WorldServer", "Char enum for account_id=%d: found %d characters",
+             session->account.id, characters.count);
 
     packet_writer_t packet;
     writer_init(&packet);
@@ -179,15 +212,16 @@ static result_t handle_char_enum(world_session_t *session) {
         write_uint32(&packet, 0);  /* Guild ID */
 
         write_uint32(&packet, 0);  /* Character flags */
-        write_uint8(&packet, 0);   /* First login (0 = no) */
+        write_uint8(&packet, 1);   /* At login flags (1 = first login resting) */
         write_uint32(&packet, 0);  /* Pet display ID */
         write_uint32(&packet, 0);  /* Pet level */
         write_uint32(&packet, 0);  /* Pet family */
 
-        /* Equipment (20 slots: display ID + inventory type) */
+        /* Equipment (TBC: 20 slots = 19 equipment + 1 bag) */
         for (int j = 0; j < 20; j++) {
             write_uint32(&packet, 0);  /* Display ID */
             write_uint8(&packet, 0);   /* Inventory type */
+            write_uint32(&packet, 0);  /* Enchant aura ID */
         }
     }
 
@@ -216,7 +250,8 @@ static result_t handle_char_create(world_session_t *session, const uint8_t *data
     uint8_t hair_color = read_uint8(&reader);
     uint8_t facial_hair = read_uint8(&reader);
 
-    LOG_INFO("WorldServer", "Character create: %s (Race: %d, Class: %d)", name, race, char_class);
+    LOG_INFO("WorldServer", "Character create: %s (Race: %d, Class: %d) for account_id=%d",
+             name, race, char_class, session->account.id);
 
     /* Check if name exists */
     bool exists = false;
@@ -300,10 +335,9 @@ static result_t send_login_verify_world(world_session_t *session) {
 static result_t send_account_data_times(world_session_t *session) {
     packet_writer_t packet;
     writer_init(&packet);
-    /* 32 uint32 values */
-    for (int i = 0; i < 32; i++) {
-        write_uint32(&packet, 0);
-    }
+    /* TBC 2.4.3: 128 bytes (8 account data types x 16 bytes each MD5 hash, or 32 x uint32)
+     * Sending all zeros = no cached data */
+    write_zeros(&packet, 128);
     send_packet(session, SMSG_ACCOUNT_DATA_TIMES, writer_data(&packet), writer_size(&packet));
     writer_free(&packet);
     return OK;
@@ -334,6 +368,7 @@ static result_t send_login_set_time_speed(world_session_t *session) {
 
     write_uint32(&packet, game_time);
     write_float(&packet, 0.01666667f);  /* Game speed (1/60 for real-time) */
+    write_uint32(&packet, 0);           /* Server time bias (added in 2.4.0) */
 
     send_packet(session, SMSG_LOGIN_SETTIMESPEED, writer_data(&packet), writer_size(&packet));
     writer_free(&packet);
@@ -354,8 +389,8 @@ static result_t send_initial_spells(world_session_t *session) {
 static result_t send_action_buttons(world_session_t *session) {
     packet_writer_t packet;
     writer_init(&packet);
-    /* 120 action button slots (each 4 bytes) */
-    for (int i = 0; i < 120; i++) {
+    /* TBC: 132 action button slots (each 4 bytes) */
+    for (int i = 0; i < 132; i++) {
         write_uint32(&packet, 0);
     }
     send_packet(session, SMSG_ACTION_BUTTONS, writer_data(&packet), writer_size(&packet));
@@ -366,10 +401,10 @@ static result_t send_action_buttons(world_session_t *session) {
 static result_t send_initialize_factions(world_session_t *session) {
     packet_writer_t packet;
     writer_init(&packet);
-    write_uint32(&packet, 0x00000040);  /* Faction count (64) */
+    write_uint32(&packet, 0x00000080);  /* Faction count (128 for TBC) */
 
-    /* 64 faction entries (flags uint8, standing uint32) */
-    for (int i = 0; i < 64; i++) {
+    /* 128 faction entries (flags uint8, standing uint32) */
+    for (int i = 0; i < 128; i++) {
         write_uint8(&packet, 0);   /* Flags */
         write_uint32(&packet, 0);  /* Standing */
     }
@@ -388,7 +423,52 @@ static result_t send_update_object(world_session_t *session) {
 
     update_build_create_packet(&builder, &session->player, true, &packet);
 
+    /* Hex dump full update packet for debugging */
+    size_t total_size = writer_size(&packet);
+    char *hex = (char*)malloc(total_size * 3 + 1);
+    hex[0] = '\0';
+    for (size_t i = 0; i < total_size; i++) {
+        char byte_str[4];
+        snprintf(byte_str, sizeof(byte_str), "%02X ", writer_data(&packet)[i]);
+        strcat(hex, byte_str);
+    }
+    LOG_DEBUG("WorldServer", "UPDATE_OBJECT total=%zu hex: %s", total_size, hex);
+    free(hex);
+
     send_packet(session, SMSG_UPDATE_OBJECT, writer_data(&packet), writer_size(&packet));
+    writer_free(&packet);
+    return OK;
+}
+
+static result_t send_init_world_states(world_session_t *session) {
+    packet_writer_t packet;
+    writer_init(&packet);
+
+    /* Map, Zone, Area */
+    write_uint32(&packet, (uint32_t)session->player.map);
+    write_uint32(&packet, (uint32_t)session->player.zone_id);
+    write_uint32(&packet, (uint32_t)session->player.area_id);
+
+    /* Number of world state pairs */
+    write_uint16(&packet, 0);  /* No world states for now */
+
+    send_packet(session, SMSG_INIT_WORLD_STATES, writer_data(&packet), writer_size(&packet));
+    writer_free(&packet);
+    return OK;
+}
+
+static result_t send_bind_point_update(world_session_t *session) {
+    packet_writer_t packet;
+    writer_init(&packet);
+
+    /* Bind point location */
+    write_float(&packet, session->player.x);
+    write_float(&packet, session->player.y);
+    write_float(&packet, session->player.z);
+    write_uint32(&packet, (uint32_t)session->player.map);
+    write_uint32(&packet, (uint32_t)session->player.zone_id);
+
+    send_packet(session, SMSG_BINDPOINTUPDATE, writer_data(&packet), writer_size(&packet));
     writer_free(&packet);
     return OK;
 }
@@ -418,18 +498,25 @@ static result_t handle_player_login(world_session_t *session, const uint8_t *dat
     player_init(&session->player, &character);
     session->has_player = true;
 
-    LOG_INFO("WorldServer", "Player login: %s", character.name);
+    LOG_INFO("WorldServer", "Player login: %s (guid=%llu map=%d pos=%.1f,%.1f,%.1f)",
+             character.name, (unsigned long long)session->player.guid,
+             session->player.map, session->player.x, session->player.y, session->player.z);
 
     /* Send login sequence in order */
+    LOG_DEBUG("WorldServer", "Sending login sequence...");
     send_login_verify_world(session);
     send_account_data_times(session);
+    send_bind_point_update(session);
     send_tutorial_flags(session);
     send_login_set_time_speed(session);
     send_initial_spells(session);
     send_action_buttons(session);
     send_initialize_factions(session);
+    send_init_world_states(session);
+    LOG_DEBUG("WorldServer", "Sending SMSG_UPDATE_OBJECT...");
     send_update_object(session);
     send_time_sync_request(session);
+    LOG_DEBUG("WorldServer", "Login sequence complete");
 
     session->state = WORLD_STATE_IN_WORLD;
     return OK;
@@ -502,15 +589,22 @@ static result_t handle_logout_request(world_session_t *session) {
     return OK;
 }
 
-/* Handle movement packets */
+/* Handle movement packets (TBC format) */
 static void handle_movement(world_session_t *session, uint16_t opcode, const uint8_t *data, size_t len) {
     (void)opcode;
-    if (!session->has_player || len < 24) return;
+    if (!session->has_player || len < 28) return;
 
     packet_reader_t reader;
     reader_init(&reader, data, len);
 
+    /* TBC movement packet format:
+     * uint32_t move_flags
+     * uint8_t  move_flags2 (TBC addition)
+     * uint32_t time
+     * float x, y, z, orientation
+     */
     /* uint32_t move_flags = */ read_uint32(&reader);
+    /* uint8_t move_flags2 = */ read_uint8(&reader);
     /* uint32_t time = */ read_uint32(&reader);
     float x = read_float(&reader);
     float y = read_float(&reader);
@@ -543,6 +637,17 @@ static result_t handle_packet(world_session_t *session, uint16_t opcode, const u
             return handle_name_query(session, data, len);
         case CMSG_LOGOUT_REQUEST:
             return handle_logout_request(session);
+        case CMSG_REALM_SPLIT: {
+            /* Respond with "no split" */
+            packet_writer_t pkt;
+            writer_init(&pkt);
+            write_uint32(&pkt, 0xFFFFFFFF);          /* realm ID */
+            write_uint32(&pkt, 0);                    /* split state: 0=normal */
+            write_cstring(&pkt, "01/01/01");          /* split date */
+            send_packet(session, SMSG_REALM_SPLIT, writer_data(&pkt), writer_size(&pkt));
+            writer_free(&pkt);
+            return OK;
+        }
         case CMSG_TIME_SYNC_RESP:
         case CMSG_STANDSTATECHANGE:
         case CMSG_SET_SELECTION:
@@ -596,6 +701,9 @@ void world_session_handle(world_session_t *session) {
                 break;
             }
         }
+
+        /* Log every received opcode */
+        LOG_DEBUG("WorldServer", "RECV opcode=0x%04X size=%zu", opcode, payload_size);
 
         /* Handle packet */
         handle_packet(session, opcode, payload, payload_size);

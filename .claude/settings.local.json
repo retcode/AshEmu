@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake --version:*)",
+      "Bash(gcc:*)",
+      "Bash(cc:*)",
+      "Bash(pacman -Q:*)",
+      "Bash(cmake:*)",
+      "Bash(ninja:*)",
+      "Bash(timeout 2 /c/WINDOWS/system32/cmd.exe /c \"ncat 127.0.0.1 3724\")",
+      "Bash(echo:*)",
+      "Bash(taskkill.exe:*)",
+      "Bash(\"C:/dev/retcode/AshEmu/build/bin/ashemu.exe\")",
+      "Bash(netsh.exe advfirewall firewall add rule:*)",
+      "Bash(netstat.exe:*)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh api:*)",
+      "Bash(python3:*)",
+      "WebFetch(domain:www.javatips.net)",
+      "WebFetch(domain:wowdev.wiki)",
+      "WebFetch(domain:gtker.com)",
+      "WebFetch(domain:www.getmangos.eu)",
+      "WebFetch(domain:thoriumlxc.gitlab.io)",
+      "WebFetch(domain:docs.rs)",
+      "WebFetch(domain:ascemu.github.io)",
+      "WebFetch(domain:en.verysource.com)",
+      "Bash(git clone:*)",
+      "Bash(ls:*)",
+      "Bash(./ashemu.exe:*)"
+    ]
+  }
+}

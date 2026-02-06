@@ -1,5 +1,5 @@
 /*
- * AshEmu - WoW 1.12.1 Server Emulator
+ * AshEmu - WoW 2.4.3 Server Emulator
  * Copyright (C) 2025 AshEmu Team
  *
  * common.h - Platform types, logging, and error codes
@@ -58,13 +58,13 @@ typedef enum {
 
 /* Logging macros */
 #define LOG_INFO(component, fmt, ...) \
-    fprintf(stdout, "[%s] " fmt "\n", component, ##__VA_ARGS__)
+    do { fprintf(stdout, "[%s] " fmt "\n", component, ##__VA_ARGS__); fflush(stdout); } while(0)
 
 #define LOG_ERROR(component, fmt, ...) \
-    fprintf(stderr, "[%s] ERROR: " fmt "\n", component, ##__VA_ARGS__)
+    do { fprintf(stderr, "[%s] ERROR: " fmt "\n", component, ##__VA_ARGS__); fflush(stderr); } while(0)
 
 #define LOG_DEBUG(component, fmt, ...) \
-    fprintf(stdout, "[%s] DEBUG: " fmt "\n", component, ##__VA_ARGS__)
+    do { fprintf(stdout, "[%s] DEBUG: " fmt "\n", component, ##__VA_ARGS__); fflush(stdout); } while(0)
 
 /* Memory helpers */
 #define ALLOC(type) ((type*)calloc(1, sizeof(type)))
